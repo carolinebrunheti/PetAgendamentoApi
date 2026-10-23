@@ -41,6 +41,12 @@ public class AgendarConsultaService {
                 .toList();
     }
 
+    public List<AgendarConsultaResponse> buscarConsultasDoTutor(Integer tutorId) {
+        return agendarConsultaRepository.findByTutorId(tutorId).stream()
+                .map(this::toResponse)
+                .toList();
+    }
+
     public AgendarConsultaResponse buscarConsulta(Integer id) {
         return agendarConsultaRepository.findById(id)
                 .map(this::toResponse)

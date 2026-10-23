@@ -6,7 +6,9 @@ import java.util.List;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
-import org.springframework.messaging.handler.annotation.support.MethodArgumentNotValidException;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.AuthenticationException;
+import org.springframework.web.bind.MethodArgumentNotValidException;
 import org.springframework.web.bind.annotation.ExceptionHandler;
 import org.springframework.web.bind.annotation.RestControllerAdvice;
 
@@ -44,6 +46,18 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(HttpMessageNotReadableException.class)
     public ResponseEntity<ErroResponse> jsonInvalido(HttpMessageNotReadableException ex, HttpServletRequest request) {
         return montar(HttpStatus.BAD_REQUEST, "JSON inválido ou com formato incorreto", request, List.of());
+    }
+
+    // token ausente, invalido ou expirado
+    @ExceptionHandler(AuthenticationException.class)
+    public ResponseEntity<ErroResponse> naoAutenticado(AuthenticationException ex, HttpServletRequest request){
+        return montar(HttpStatus.UNAUTHORIZED, "Autenticação necessária: envie um token válido no header Authorization", request, List.of());
+    }
+
+    // autenticado, mas sem a role exigida para a rota
+    @ExceptionHandler(AccessDeniedException.class)
+    public ResponseEntity<ErroResponse> acessoNegado(AccessDeniedException ex, HttpServletRequest request){
+        return montar(HttpStatus.FORBIDDEN, "Acesso negado: você não tem permissão para este recurso", request, List.of());
     }
 
     @ExceptionHandler (Exception.class)

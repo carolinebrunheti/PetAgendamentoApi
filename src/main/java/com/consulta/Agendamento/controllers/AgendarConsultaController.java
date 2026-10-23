@@ -4,6 +4,9 @@ import java.util.List;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
+import org.springframework.security.access.AccessDeniedException;
+import org.springframework.security.core.annotation.AuthenticationPrincipal;
+import org.springframework.security.oauth2.jwt.Jwt;
 import org.springframework.web.bind.annotation.GetMapping;
 import org.springframework.web.bind.annotation.PatchMapping;
 import org.springframework.web.bind.annotation.PathVariable;
@@ -13,6 +16,7 @@ import org.springframework.web.bind.annotation.RequestBody;
 import org.springframework.web.bind.annotation.RequestMapping;
 import org.springframework.web.bind.annotation.RestController;
 
+import com.consulta.Agendamento.config.security.UsuarioLogado;
 import com.consulta.Agendamento.dtos.AgendarConsultaDTO;
 import com.consulta.Agendamento.dtos.AgendarConsultaResponse;
 import com.consulta.Agendamento.services.AgendarConsultaService;
@@ -35,14 +39,24 @@ public class AgendarConsultaController {
         return ResponseEntity.status(HttpStatus.CREATED).body(agendarConsultaService.agendarNovaConsulta(request));
     }
 
+    // o tutor so enxerga as proprias consultas; a equipe da clinica ve todas
     @GetMapping
-    public ResponseEntity<List<AgendarConsultaResponse>> buscarTodasConsultas(){
+    public ResponseEntity<List<AgendarConsultaResponse>> buscarTodasConsultas(@AuthenticationPrincipal Jwt jwt){
+        UsuarioLogado usuario = UsuarioLogado.de(jwt);
+        if (usuario.isTutor()) {
+            return ResponseEntity.ok(agendarConsultaService.buscarConsultasDoTutor(usuario.id()));
+        }
         return ResponseEntity.ok(agendarConsultaService.buscarTodasConsultas());
     }
 
     @GetMapping("/{id}")
-    public ResponseEntity<AgendarConsultaResponse> buscarConsulta(@PathVariable Integer id){
-        return ResponseEntity.ok(agendarConsultaService.buscarConsulta(id));
+    public ResponseEntity<AgendarConsultaResponse> buscarConsulta(@PathVariable Integer id, @AuthenticationPrincipal Jwt jwt){
+        UsuarioLogado usuario = UsuarioLogado.de(jwt);
+        AgendarConsultaResponse consulta = agendarConsultaService.buscarConsulta(id);
+        if (usuario.isTutor() && !consulta.tutorId().equals(usuario.id())) {
+            throw new AccessDeniedException("Consulta de outro tutor");
+        }
+        return ResponseEntity.ok(consulta);
     }
 
     @PatchMapping("/{id}/cancelar")

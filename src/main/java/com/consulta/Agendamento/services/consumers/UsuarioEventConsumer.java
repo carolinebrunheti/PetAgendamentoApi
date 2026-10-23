@@ -36,7 +36,7 @@ public class UsuarioEventConsumer {
     }
 
     private void processarTutor(UsuarioEvent evento){
-        if(evento.tipoEvento() == TipoEvento.DELETADO){
+        if(evento.tipoEvento() == TipoEvento.REMOVIDO){
             tutorRepository.findById(evento.id()).ifPresent(tutor -> {
                 tutor.setAtivo(false);
                 tutorRepository.save(tutor);
@@ -47,7 +47,7 @@ public class UsuarioEventConsumer {
     }
 
     private void processarVeterinario(UsuarioEvent evento){
-        if(evento.tipoEvento() == TipoEvento.DELETADO){
+        if(evento.tipoEvento() == TipoEvento.REMOVIDO){
             veterinarioRepository.findById(evento.id()).ifPresent(vet ->{
                 vet.setAtivo(false);
                 veterinarioRepository.save(vet);

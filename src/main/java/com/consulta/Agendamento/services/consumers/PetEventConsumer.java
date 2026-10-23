@@ -25,7 +25,7 @@ public class PetEventConsumer {
     public void consumir(PetEvent evento){
         log.info("Recebido {} do pet {}", evento.tipoEvento(), evento.id());
 
-        if(evento.tipoEvento() ==  TipoEvento.DELETADO){
+        if(evento.tipoEvento() ==  TipoEvento.REMOVIDO){
             petRepository.findById(evento.id()).ifPresent(pet -> {
                 pet.setAtivo(false);
                 petRepository.save(pet);
