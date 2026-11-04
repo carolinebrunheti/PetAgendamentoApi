@@ -1,7 +1,8 @@
 package com.consulta.Agendamento.services;
 
 import java.time.LocalDateTime;
-import java.util.List;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.stereotype.Service;
 import org.springframework.transaction.annotation.Transactional;
 import com.consulta.Agendamento.dtos.AgendarConsultaDTO;
@@ -35,16 +36,14 @@ public class AgendarConsultaService {
 
     // métodos públicos (os que o controller chama)
 
-    public List<AgendarConsultaResponse> buscarTodasConsultas() {
-        return agendarConsultaRepository.findAll().stream()
-                .map(this::toResponse)
-                .toList();
+    public Page<AgendarConsultaResponse> buscarTodasConsultas(Pageable pageable) {
+        return agendarConsultaRepository.findAll(pageable)
+                .map(this::toResponse);
     }
 
-    public List<AgendarConsultaResponse> buscarConsultasDoTutor(Integer tutorId) {
-        return agendarConsultaRepository.findByTutorId(tutorId).stream()
-                .map(this::toResponse)
-                .toList();
+    public Page<AgendarConsultaResponse> buscarConsultasDoTutor(Integer tutorId, Pageable pageable) {
+        return agendarConsultaRepository.findByTutorId(tutorId, pageable)
+                .map(this::toResponse);
     }
 
     public AgendarConsultaResponse buscarConsulta(Integer id) {

@@ -21,6 +21,10 @@ import org.mockito.Captor;
 import org.mockito.InjectMocks;
 import org.mockito.Mock;
 import org.mockito.junit.jupiter.MockitoExtension;
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.PageRequest;
+import org.springframework.data.domain.Pageable;
 
 import com.consulta.Agendamento.dtos.AgendarConsultaDTO;
 import com.consulta.Agendamento.dtos.AgendarConsultaResponse;
@@ -93,22 +97,37 @@ class AgendarConsultaServiceTest {
 
         @Test
         void deveRetornarTodasAsConsultasConvertidas() {
-            when(agendarConsultaRepository.findAll()).thenReturn(List.of(
+            Pageable pageable = PageRequest.of(0, 10);
+            when(agendarConsultaRepository.findAll(pageable)).thenReturn(new PageImpl<>(List.of(
                     consulta(10, StatusConsulta.AGENDADA),
-                    consulta(11, StatusConsulta.CANCELADA)));
+                    consulta(11, StatusConsulta.CANCELADA)), pageable, 2));
 
-            List<AgendarConsultaResponse> resultado = service.buscarTodasConsultas();
+            Page<AgendarConsultaResponse> resultado = service.buscarTodasConsultas(pageable);
 
-            assertThat(resultado).containsExactly(
+            assertThat(resultado.getContent()).containsExactly(
                     new AgendarConsultaResponse(10, 1, 2, 3, DIA_HORA, StatusConsulta.AGENDADA),
                     new AgendarConsultaResponse(11, 1, 2, 3, DIA_HORA, StatusConsulta.CANCELADA));
+            assertThat(resultado.getTotalElements()).isEqualTo(2);
         }
 
         @Test
-        void deveRetornarListaVaziaQuandoNaoHaConsultas() {
-            when(agendarConsultaRepository.findAll()).thenReturn(List.of());
+        void deveRetornarPaginaVaziaQuandoNaoHaConsultas() {
+            Pageable pageable = PageRequest.of(0, 10);
+            when(agendarConsultaRepository.findAll(pageable)).thenReturn(Page.empty(pageable));
 
-            assertThat(service.buscarTodasConsultas()).isEmpty();
+            assertThat(service.buscarTodasConsultas(pageable)).isEmpty();
+        }
+
+        @Test
+        void deveBuscarSoAsConsultasDoTutorNaPaginaPedida() {
+            Pageable pageable = PageRequest.of(1, 10);
+            when(agendarConsultaRepository.findByTutorId(1, pageable)).thenReturn(new PageImpl<>(List.of(
+                    consulta(10, StatusConsulta.AGENDADA)), pageable, 11));
+
+            Page<AgendarConsultaResponse> resultado = service.buscarConsultasDoTutor(1, pageable);
+
+            assertThat(resultado.getContent()).extracting(AgendarConsultaResponse::id).containsExactly(10);
+            assertThat(resultado.getTotalElements()).isEqualTo(11);
         }
     }
 

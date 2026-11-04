@@ -1,5 +1,6 @@
 package com.consulta.Agendamento.controllers;
 
+import static org.assertj.core.api.Assertions.assertThat;
 import static org.hamcrest.Matchers.hasItem;
 import static org.hamcrest.Matchers.hasSize;
 import static org.hamcrest.Matchers.startsWith;
@@ -22,9 +23,15 @@ import java.util.List;
 
 import org.junit.jupiter.api.Nested;
 import org.junit.jupiter.api.Test;
+import org.mockito.ArgumentCaptor;
 import org.springframework.beans.factory.annotation.Autowired;
 import org.springframework.boot.webmvc.test.autoconfigure.WebMvcTest;
 import org.springframework.context.annotation.Import;
+import org.springframework.data.core.PropertyReferenceException;
+import org.springframework.data.core.TypeInformation;
+import org.springframework.data.domain.PageImpl;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.domain.Sort;
 import org.springframework.http.MediaType;
 import org.springframework.security.core.authority.SimpleGrantedAuthority;
 import org.springframework.security.test.context.support.WithMockUser;
@@ -36,6 +43,7 @@ import org.springframework.test.web.servlet.request.RequestPostProcessor;
 import com.consulta.Agendamento.config.security.SecurityConfig;
 import com.consulta.Agendamento.dtos.AgendarConsultaDTO;
 import com.consulta.Agendamento.dtos.AgendarConsultaResponse;
+import com.consulta.Agendamento.entities.AgendarConsultaEntity;
 import com.consulta.Agendamento.exceptions.ConflitoException;
 import com.consulta.Agendamento.exceptions.RecursoNaoEncontradoException;
 import com.consulta.Agendamento.exceptions.RegraNegocioException;
@@ -160,24 +168,62 @@ class AgendarConsultaControllerTest {
 
         @Test
         void deveRetornar200ComTodasAsConsultas() throws Exception {
-            when(agendarConsultaService.buscarTodasConsultas()).thenReturn(List.of(
+            when(agendarConsultaService.buscarTodasConsultas(any(Pageable.class))).thenReturn(new PageImpl<>(List.of(
                     response(10, StatusConsulta.AGENDADA),
-                    response(11, StatusConsulta.CANCELADA)));
+                    response(11, StatusConsulta.CANCELADA))));
 
             mockMvc.perform(get("/agendarConsulta").with(token(1, "ADMIN")))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$", hasSize(2)))
-                    .andExpect(jsonPath("$[0].id").value(10))
-                    .andExpect(jsonPath("$[1].status").value("CANCELADA"));
+                    .andExpect(jsonPath("$.content", hasSize(2)))
+                    .andExpect(jsonPath("$.content[0].id").value(10))
+                    .andExpect(jsonPath("$.content[1].status").value("CANCELADA"))
+                    .andExpect(jsonPath("$.page.totalElements").value(2));
+        }
+
+        @Test
+        void devePaginarCom10ItensOrdenadosPorIdPorPadrao() throws Exception {
+            when(agendarConsultaService.buscarTodasConsultas(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
+
+            mockMvc.perform(get("/agendarConsulta").with(token(1, "ADMIN")))
+                    .andExpect(status().isOk());
+
+            ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+            verify(agendarConsultaService).buscarTodasConsultas(captor.capture());
+            assertThat(captor.getValue().getPageNumber()).isZero();
+            assertThat(captor.getValue().getPageSize()).isEqualTo(10);
+            assertThat(captor.getValue().getSort()).isEqualTo(Sort.by("id"));
+        }
+
+        @Test
+        void deveRespeitarPaginaPedidaELimitarTamanhoEm50() throws Exception {
+            when(agendarConsultaService.buscarTodasConsultas(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
+
+            mockMvc.perform(get("/agendarConsulta").param("page", "3").param("size", "1000").with(token(1, "ADMIN")))
+                    .andExpect(status().isOk());
+
+            ArgumentCaptor<Pageable> captor = ArgumentCaptor.forClass(Pageable.class);
+            verify(agendarConsultaService).buscarTodasConsultas(captor.capture());
+            assertThat(captor.getValue().getPageNumber()).isEqualTo(3);
+            assertThat(captor.getValue().getPageSize()).isEqualTo(50);
+        }
+
+        @Test
+        void deveRetornar400QuandoCampoDeOrdenacaoNaoExiste() throws Exception {
+            when(agendarConsultaService.buscarTodasConsultas(any(Pageable.class))).thenThrow(new PropertyReferenceException(
+                    "naoExiste", TypeInformation.of(AgendarConsultaEntity.class), List.of()));
+
+            mockMvc.perform(get("/agendarConsulta").param("sort", "naoExiste").with(token(1, "ADMIN")))
+                    .andExpect(status().isBadRequest())
+                    .andExpect(jsonPath("$.mensagem").value("Campo de ordenação inválido: naoExiste"));
         }
 
         @Test
         void deveRetornar200ComListaVazia() throws Exception {
-            when(agendarConsultaService.buscarTodasConsultas()).thenReturn(List.of());
+            when(agendarConsultaService.buscarTodasConsultas(any(Pageable.class))).thenReturn(new PageImpl<>(List.of()));
 
             mockMvc.perform(get("/agendarConsulta").with(token(1, "ADMIN")))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$", hasSize(0)));
+                    .andExpect(jsonPath("$.content", hasSize(0)));
         }
 
         @Test
@@ -204,7 +250,7 @@ class AgendarConsultaControllerTest {
 
         @Test
         void deveRetornar500QuandoErroInesperado() throws Exception {
-            when(agendarConsultaService.buscarTodasConsultas()).thenThrow(new IllegalStateException("falha"));
+            when(agendarConsultaService.buscarTodasConsultas(any(Pageable.class))).thenThrow(new IllegalStateException("falha"));
 
             mockMvc.perform(get("/agendarConsulta").with(token(1, "ADMIN")))
                     .andExpect(status().isInternalServerError())
@@ -315,14 +361,15 @@ class AgendarConsultaControllerTest {
 
         @Test
         void tutorListaSoAsProprias() throws Exception {
-            when(agendarConsultaService.buscarConsultasDoTutor(1)).thenReturn(List.of(response(10, StatusConsulta.AGENDADA)));
+            when(agendarConsultaService.buscarConsultasDoTutor(eq(1), any(Pageable.class)))
+                    .thenReturn(new PageImpl<>(List.of(response(10, StatusConsulta.AGENDADA))));
 
             mockMvc.perform(get("/agendarConsulta").with(token(1, "TUTOR")))
                     .andExpect(status().isOk())
-                    .andExpect(jsonPath("$", hasSize(1)))
-                    .andExpect(jsonPath("$[0].tutorId").value(1));
+                    .andExpect(jsonPath("$.content", hasSize(1)))
+                    .andExpect(jsonPath("$.content[0].tutorId").value(1));
 
-            verify(agendarConsultaService, never()).buscarTodasConsultas();
+            verify(agendarConsultaService, never()).buscarTodasConsultas(any());
         }
 
         @Test

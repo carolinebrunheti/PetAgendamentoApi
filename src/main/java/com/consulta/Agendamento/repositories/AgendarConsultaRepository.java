@@ -1,7 +1,8 @@
 package com.consulta.Agendamento.repositories;
 import java.time.LocalDateTime;
-import java.util.List;
 
+import org.springframework.data.domain.Page;
+import org.springframework.data.domain.Pageable;
 import org.springframework.data.jpa.repository.JpaRepository;
 import org.springframework.stereotype.Repository;
 import com.consulta.Agendamento.entities.AgendarConsultaEntity;
@@ -14,6 +15,6 @@ public interface AgendarConsultaRepository extends JpaRepository<AgendarConsulta
      boolean existsByVeterinarioIdAndDiaHoraAndStatusAndIdNot(
             Integer veterinarioId, LocalDateTime diaHora, StatusConsulta status, Integer id);
 
-     List<AgendarConsultaEntity> findByTutorId(Integer tutorId);
+     Page<AgendarConsultaEntity> findByTutorId(Integer tutorId, Pageable pageable);
 
 }

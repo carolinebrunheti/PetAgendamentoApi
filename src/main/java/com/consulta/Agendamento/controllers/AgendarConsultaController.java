@@ -1,6 +1,8 @@
 package com.consulta.Agendamento.controllers;
 
-import java.util.List;
+import org.springframework.data.domain.Pageable;
+import org.springframework.data.web.PageableDefault;
+import org.springframework.data.web.PagedModel;
 
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
@@ -41,12 +43,13 @@ public class AgendarConsultaController {
 
     // o tutor so enxerga as proprias consultas; a equipe da clinica ve todas
     @GetMapping
-    public ResponseEntity<List<AgendarConsultaResponse>> buscarTodasConsultas(@AuthenticationPrincipal Jwt jwt){
+    public ResponseEntity<PagedModel<AgendarConsultaResponse>> buscarTodasConsultas(@AuthenticationPrincipal Jwt jwt,
+            @PageableDefault(size = 10, sort = "id") Pageable pageable){
         UsuarioLogado usuario = UsuarioLogado.de(jwt);
         if (usuario.isTutor()) {
-            return ResponseEntity.ok(agendarConsultaService.buscarConsultasDoTutor(usuario.id()));
+            return ResponseEntity.ok(new PagedModel<>(agendarConsultaService.buscarConsultasDoTutor(usuario.id(), pageable)));
         }
-        return ResponseEntity.ok(agendarConsultaService.buscarTodasConsultas());
+        return ResponseEntity.ok(new PagedModel<>(agendarConsultaService.buscarTodasConsultas(pageable)));
     }
 
     @GetMapping("/{id}")

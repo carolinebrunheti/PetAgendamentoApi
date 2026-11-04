@@ -3,6 +3,7 @@ package com.consulta.Agendamento.exceptions;
 import java.time.LocalDateTime;
 import java.util.List;
 
+import org.springframework.data.core.PropertyReferenceException;
 import org.springframework.http.HttpStatus;
 import org.springframework.http.ResponseEntity;
 import org.springframework.http.converter.HttpMessageNotReadableException;
@@ -58,6 +59,12 @@ public class GlobalExceptionHandler {
     @ExceptionHandler(AccessDeniedException.class)
     public ResponseEntity<ErroResponse> acessoNegado(AccessDeniedException ex, HttpServletRequest request){
         return montar(HttpStatus.FORBIDDEN, "Acesso negado: você não tem permissão para este recurso", request, List.of());
+    }
+
+    // ?sort= com um campo que nao existe na entidade
+    @ExceptionHandler(PropertyReferenceException.class)
+    public ResponseEntity<ErroResponse> ordenacaoInvalida(PropertyReferenceException ex, HttpServletRequest request) {
+        return montar(HttpStatus.BAD_REQUEST, "Campo de ordenação inválido: " + ex.getPropertyName(), request, List.of());
     }
 
     @ExceptionHandler (Exception.class)
