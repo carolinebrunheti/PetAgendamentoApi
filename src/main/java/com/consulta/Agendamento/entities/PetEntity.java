@@ -1,5 +1,7 @@
 package com.consulta.Agendamento.entities;
 
+import java.time.LocalDateTime;
+
 import com.consulta.Agendamento.services.enums.Especie;
 
 import jakarta.persistence.Column;
@@ -8,7 +10,6 @@ import jakarta.persistence.EnumType;
 import jakarta.persistence.Enumerated;
 import jakarta.persistence.Id;
 import jakarta.persistence.Table;
-import lombok.AllArgsConstructor;
 import lombok.Getter;
 import lombok.NoArgsConstructor;
 import lombok.Setter;
@@ -18,7 +19,6 @@ import lombok.Setter;
 @Getter
 @Setter
 @NoArgsConstructor
-@AllArgsConstructor
 public class PetEntity {
 
     @Id
@@ -36,4 +36,16 @@ public class PetEntity {
 
     @Column(nullable = false)
     private Boolean ativo = true;
+
+    // momento (ocorridoEm) do ultimo evento aplicado; null nos registros anteriores a esta coluna
+    @Column(name = "atualizado_em")
+    private LocalDateTime atualizadoEm;
+
+    public PetEntity(Integer id, String nome, Especie especie, Integer tutorId, Boolean ativo) {
+        this.id = id;
+        this.nome = nome;
+        this.especie = especie;
+        this.tutorId = tutorId;
+        this.ativo = ativo;
+    }
 }
