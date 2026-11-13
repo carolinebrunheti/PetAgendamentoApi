@@ -1,5 +1,7 @@
 package com.consulta.Agendamento.services.consumers;
 
+import java.util.Optional;
+
 import org.springframework.kafka.annotation.KafkaListener;
 import org.springframework.stereotype.Component;
 
@@ -25,14 +27,23 @@ public class PetEventConsumer {
     public void consumir(PetEvent evento){
         log.info("Recebido {} do pet {}", evento.tipoEvento(), evento.id());
 
-        if(evento.tipoEvento() ==  TipoEvento.REMOVIDO){
-            petRepository.findById(evento.id()).ifPresent(pet -> {
+        Optional<PetEntity> atual = petRepository.findById(evento.id());
+        if (atual.isPresent() && OrdemEventos.jaAplicado(atual.get().getAtualizadoEm(), evento.ocorridoEm())) {
+            log.info("Ignorado {} do pet {}: evento de {} nao e mais novo que {}",
+                    evento.tipoEvento(), evento.id(), evento.ocorridoEm(), atual.get().getAtualizadoEm());
+            return;
+        }
+        if(evento.tipoEvento() == TipoEvento.REMOVIDO){
+            atual.ifPresent(pet -> {
                 pet.setAtivo(false);
+                pet.setAtualizadoEm(evento.ocorridoEm());
                 petRepository.save(pet);
             });
             return;
         }
-        petRepository.save(new PetEntity(evento.id(), evento.nome(), evento.especie(), evento.donoId(), true));
+        PetEntity pet = new PetEntity(evento.id(), evento.nome(), evento.especie(), evento.donoId(), true);
+        pet.setAtualizadoEm(evento.ocorridoEm());
+        petRepository.save(pet);
     }
     
 }
